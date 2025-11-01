@@ -1,0 +1,112 @@
+name: Build Multi-Arch CouchDB Images
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v3.5.0
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  DOCKER_REPO: treehouses/rpi-couchdb
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Remove 'v' prefix from tag (e.g., v3.5.0 -> 3.5.0)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm,arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push ARM32 image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ steps.version.outputs.version }}
+          platforms: linux/arm/v7
+          push: true
+          tags: ${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push ARM64 image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ steps.version.outputs.version }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}-arm64v8
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create and push multi-arch manifest
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+
+          # Create manifest combining ARM32, ARM64, and official AMD64
+          docker buildx imagetools create -t ${{ env.DOCKER_REPO }}:${VERSION} \
+            ${{ env.DOCKER_REPO }}:${VERSION} \
+            ${{ env.DOCKER_REPO }}:${VERSION}-arm64v8 \
+            couchdb:${VERSION}
+
+          echo "Multi-arch manifest created and pushed successfully!"
+
+          # Verify the manifest
+          docker buildx imagetools inspect ${{ env.DOCKER_REPO }}:${VERSION}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            ## CouchDB ${{ steps.version.outputs.version }} Multi-Architecture Image
+
+            Multi-architecture Docker image supporting:
+            - **ARM32** (Raspberry Pi 4) - `linux/arm/v7`
+            - **ARM64** (Raspberry Pi 5) - `linux/arm64/v8`
+            - **AMD64** (x86_64 servers) - `linux/amd64` (official CouchDB image)
+
+            ### Quick Start
+            ```bash
+            docker run -d \
+              --name couchdb \
+              -p 5984:5984 \
+              -e COUCHDB_USER=admin \
+              -e COUCHDB_PASSWORD=password \
+              -v couchdb-data:/opt/couchdb/data \
+              ${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}
+            ```
+
+            Docker will automatically pull the correct architecture for your device.
+
+            ### Testing
+            See [TESTING.md](${{ steps.version.outputs.version }}/TESTING.md) for comprehensive testing instructions.
+
+            ### Images
+            - `${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}` - Multi-arch manifest
+            - `${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}` - ARM32 only
+            - `${{ env.DOCKER_REPO }}:${{ steps.version.outputs.version }}-arm64v8` - ARM64 only
+            - `couchdb:${{ steps.version.outputs.version }}` - AMD64 (official)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
