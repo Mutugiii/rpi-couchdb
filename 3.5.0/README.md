@@ -1,13 +1,21 @@
 ### [treehouses/couchdb:3.5.0](https://hub.docker.com/r/treehouses/rpi-couchdb/tags)
 
 ```bash
+# Create manifest combining all architectures
 docker manifest create treehouses/rpi-couchdb:3.5.0 \
   treehouses/rpi-couchdb:3.5.0 \
+  treehouses/rpi-couchdb:3.5.0-arm64v8 \
   couchdb:3.5.0
 
+# Annotate ARM32 (Raspberry Pi 4)
 docker manifest annotate treehouses/rpi-couchdb:3.5.0 \
   treehouses/rpi-couchdb:3.5.0 \
-  --os linux --arch arm
+  --os linux --arch arm --variant v7
+
+# Annotate ARM64 (Raspberry Pi 5)
+docker manifest annotate treehouses/rpi-couchdb:3.5.0 \
+  treehouses/rpi-couchdb:3.5.0-arm64v8 \
+  --os linux --arch arm64 --variant v8
 
 docker manifest push treehouses/rpi-couchdb:3.5.0
 ```
