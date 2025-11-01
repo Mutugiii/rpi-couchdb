@@ -1,0 +1,20 @@
+image: treehouses/rpi-couchdb:3.5.0
+manifests:
+  -
+    image: treehouses/rpi-couchdb:3.5.0
+    platform:
+      architecture: arm
+      variant: v7
+      os: linux
+  -
+    image: treehouses/rpi-couchdb:3.5.0-arm64v8
+    platform:
+      architecture: arm64
+      variant: v8
+      os: linux
+  -
+    image: couchdb:3.5.0
+    platform:
+      architecture: amd64
+      os: linux
+
