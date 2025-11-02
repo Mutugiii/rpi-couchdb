@@ -44,9 +44,9 @@ if [ "$1" = '/opt/couchdb/bin/couchdb' ]; then
 	touch /opt/couchdb/etc/local.d/docker.ini
 
 	# CouchDB 3.x requires admin credentials
-	if [ "$COUCHDB_USER" ] && [ "$COUCHDB_PASS" ]; then
+	if [ "$COUCHDB_USER" ] && [ "$COUCHDB_PASSWORD" ]; then
 		# Create admin
-		printf "[admins]\n%s = %s\n" "$COUCHDB_USER" "$COUCHDB_PASS" > /opt/couchdb/etc/local.d/docker.ini
+		printf "[admins]\n%s = %s\n" "$COUCHDB_USER" "$COUCHDB_PASSWORD" > /opt/couchdb/etc/local.d/docker.ini
 		chown couchdb:couchdb /opt/couchdb/etc/local.d/docker.ini
 	fi
 
@@ -67,7 +67,7 @@ if [ "$1" = '/opt/couchdb/bin/couchdb' ]; then
 			****************************************************
 			WARNING: CouchDB 3.x requires admin credentials.
 			         Set them using environment variables:
-			         -e COUCHDB_USER=admin -e COUCHDB_PASS=password
+			         -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password
 
 			         CouchDB will fail to start without credentials.
 			****************************************************

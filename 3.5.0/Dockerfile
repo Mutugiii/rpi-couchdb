@@ -42,6 +42,9 @@ ENV GPG_KEYS="0BD7A98499C4AB41C910EE65FC04DFBC9657A78E 390EF70BB1EA12B2773962950
 
 ENV COUCHDB_VERSION=3.5.0
 
+# Copy ARM32 compatibility patch
+COPY arm32_cfile.patch /tmp/
+
 # Download, verify, build CouchDB, and cleanup in ONE layer (keeps image small)
 RUN buildDeps=' \
     build-essential \
@@ -70,13 +73,12 @@ RUN buildDeps=' \
  && gpg --batch --verify couchdb.tar.gz.asc couchdb.tar.gz \
  && tar -xzf couchdb.tar.gz -C couchdb --strip-components=1 \
  && cd couchdb \
- # ARM32 Fix: Replace couch_cfile.c with patched version for 32-bit systems
- # Issue: Type incompatibility between long (32-bit) and ErlNifSInt64 (64-bit) on ARM32
- # Fix: Disables couch_cfile on 32-bit systems, falls back to standard Erlang file module
+ # ARM32 Fix: Patch couch_cfile for 32-bit ARM compatibility
+ # Part 1: Disables couch_cfile NIF compilation on 32-bit systems (C code)
+ # Part 2: Handles missing couch_cfile module gracefully (Erlang code)
  # Source: https://github.com/apache/couchdb/commit/b4dc703dc622bae99ca78c788a7af1f4797f57ee
- # Remove these lines when upgrading to CouchDB 3.5.1+ (fix included upstream)
- && curl -fsSL https://raw.githubusercontent.com/apache/couchdb/b4dc703dc622bae99ca78c788a7af1f4797f57ee/src/couch/priv/couch_cfile/couch_cfile.c \
-    -o src/couch/priv/couch_cfile/couch_cfile.c \
+ # Remove this patch when upgrading to CouchDB 3.5.1+ (if fix included upstream)
+ && patch -p1 < /tmp/arm32_cfile.patch \
  # Build and install CouchDB
  && ./configure --disable-docs --spidermonkey-version 102 \
  && make release \
