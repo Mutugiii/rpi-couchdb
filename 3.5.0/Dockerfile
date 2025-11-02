@@ -70,12 +70,13 @@ RUN buildDeps=' \
  && gpg --batch --verify couchdb.tar.gz.asc couchdb.tar.gz \
  && tar -xzf couchdb.tar.gz -C couchdb --strip-components=1 \
  && cd couchdb \
- # ARM32 Fix: Apply upstream patch for 32-bit couch_cfile compilation issue
+ # ARM32 Fix: Replace couch_cfile.c with patched version for 32-bit systems
  # Issue: Type incompatibility between long (32-bit) and ErlNifSInt64 (64-bit) on ARM32
  # Fix: Disables couch_cfile on 32-bit systems, falls back to standard Erlang file module
  # Source: https://github.com/apache/couchdb/commit/b4dc703dc622bae99ca78c788a7af1f4797f57ee
- # Remove this line when upgrading to CouchDB 3.5.1+ (fix included upstream)
- && curl -fsSL https://github.com/apache/couchdb/commit/b4dc703dc622bae99ca78c788a7af1f4797f57ee.patch | patch -p1 || true \
+ # Remove these lines when upgrading to CouchDB 3.5.1+ (fix included upstream)
+ && curl -fsSL https://raw.githubusercontent.com/apache/couchdb/b4dc703dc622bae99ca78c788a7af1f4797f57ee/src/couch/priv/couch_cfile/couch_cfile.c \
+    -o src/couch/priv/couch_cfile/couch_cfile.c \
  # Build and install CouchDB
  && ./configure --disable-docs --spidermonkey-version 102 \
  && make release \
