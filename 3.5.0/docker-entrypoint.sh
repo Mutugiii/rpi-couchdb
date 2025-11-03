@@ -61,6 +61,17 @@ if [ "$1" = '/opt/couchdb/bin/couchdb' ]; then
 		echo "-setcookie ${COUCHDB_ERLANG_COOKIE}" >> /opt/couchdb/etc/vm.args
 	fi
 
+	# Runtime arch detection: disable cfile NIF on 32-bit platforms
+	_bits="$(getconf LONG_BIT 2>/dev/null || echo "")"
+	if [ "$_bits" = "32" ]; then
+		mkdir -p /opt/couchdb/etc/local.d
+		# Only write if not present (avoid overwriting intentional user config)
+		if [ ! -f /opt/couchdb/etc/local.d/99-nonlp64.ini ]; then
+			printf "[couchdb]\nuse_cfile = false\n" > /opt/couchdb/etc/local.d/99-nonlp64.ini
+			echo "INFO: Detected 32-bit runtime, disabled cfile NIF (wrote 99-nonlp64.ini)"
+		fi
+	fi
+
 	# Warn if no admin is configured (3.x will refuse to start without admin)
 	if ! grep -Pzoqr '\[admins\]\n[^;]\w+' /opt/couchdb/etc/default.d/*.ini /opt/couchdb/etc/local.d/*.ini 2>/dev/null; then
 		cat >&2 <<-'EOWARN'
